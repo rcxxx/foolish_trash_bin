@@ -2,11 +2,11 @@
 
 AprilTagDetector::AprilTagDetector(){
     // aprilTag config
-    td = apriltag_detector_create();
-    tf = tag36h11_create();
+    this->td = apriltag_detector_create();
+    this->tf = tag36h11_create();
 
     apriltag_detector_add_family(td, tf);
-    td->nthreads = 4;
+    this->td->nthreads = 4;
 }
 
 zarray_t* AprilTagDetector::detectTag(cv::Mat _gray_img){
@@ -17,9 +17,7 @@ zarray_t* AprilTagDetector::detectTag(cv::Mat _gray_img){
         .buf = _gray_img.data
     };
 
-    zarray_t *detections = apriltag_detector_detect(td, &img_header);
-
-    return detections;
+    return apriltag_detector_detect(this->td, &img_header);
 }
 
 AprilTagDetector::~AprilTagDetector(){

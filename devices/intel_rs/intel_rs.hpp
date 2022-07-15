@@ -7,7 +7,7 @@
 class Rs2Camera
 {
 public:
-    Rs2Camera();
+    Rs2Camera(const int &r_w, const int & r_h, const int & fps);
     ~Rs2Camera();
 
     /**

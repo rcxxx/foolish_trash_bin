@@ -5,7 +5,6 @@
             "includePath": [
                 "${workspaceFolder}",
                 "${workspaceFolder}/**",
-                "/usr/local/include/opencv4",
                 "${workspaceFolder}/modules",
                 "${workspaceFolder}/devices"
             ],

@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wno-deprecated")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # Don't build test by default
@@ -17,44 +17,43 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 
 # Add include dir
 include_directories(
+    ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/devices
     ${PROJECT_SOURCE_DIR}/modules
 )
 
 add_executable(foolish_trash 
     ${PROJECT_SOURCE_DIR}/src/main.cpp
+    ${PROJECT_SOURCE_DIR}/include/position.hpp
 )
 
 # Dependence lib
-## Find and add librealsense2 as required
-find_package(realsense2 REQUIRED)
-include_directories(${realsense2_INCLUDE_DIRS})
-link_libraries(${realsense2_LIBRARY})
 
 ## Find and add opencv as required
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 link_libraries(${OpenCV_LIBS})
 
-## Find and add apriltag as required
-find_package(apriltag REQUIRED)
-include_directories(${apriltag_INCLUDE_DIRS} ${apriltag_INCLUDE_DIRS}/apriltag)
-link_directories(${apriltag_LIBRARY})
+## Add onnxruntime
+set(OpenVINO_DIR ~/intel/openvino_2022/runtime/cmake)
+find_package(OpenVINO REQUIRED)
+include_directories(
+    ~/intel/openvino_2022/runtime/include
+    ~/intel/openvino_2022/runtime/include/ie)
+link_libraries(openvino::runtime)
 
 # Add Subdirectories
 add_subdirectory(${PROJECT_SOURCE_DIR}/devices/intel_rs)
 add_subdirectory(${PROJECT_SOURCE_DIR}/modules/solve_pose)
 add_subdirectory(${PROJECT_SOURCE_DIR}/modules/april_tag)
+add_subdirectory(${PROJECT_SOURCE_DIR}/modules/yolov5)
 
 # Target
 target_link_libraries(foolish_trash 
     ${OpenCV_LIBS}
-    ${realsense2_LIBRARY}
-    ${apriltag_LIBRARY}
+    openvino::runtime
     intel_camera
     solve_pose
     april_tag
+    yolov5
 )
-
-
-

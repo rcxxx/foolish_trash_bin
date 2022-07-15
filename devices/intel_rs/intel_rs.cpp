@@ -1,11 +1,11 @@
 #include "intel_rs/intel_rs.hpp"
 
-Rs2Camera::Rs2Camera():align_to(RS2_STREAM_COLOR){
+Rs2Camera::Rs2Camera(const int &r_w, const int & r_h, const int & fps):align_to(RS2_STREAM_COLOR){
     rs2::config* config = new rs2::config();
 
     // Request a specific configuration
-    config->enable_stream(RS2_STREAM_COLOR, 848, 480, RS2_FORMAT_BGR8, 60);
-    config->enable_stream(RS2_STREAM_DEPTH, 848, 480, RS2_FORMAT_Z16, 60);
+    config->enable_stream(RS2_STREAM_COLOR, r_w, r_h, RS2_FORMAT_BGR8, fps);
+    config->enable_stream(RS2_STREAM_DEPTH, r_w, r_h, RS2_FORMAT_Z16, fps);
 
     // Declare RealSense pipeline, encapsulating the actual device and sensors
     // Start streaming with default recommended configuration

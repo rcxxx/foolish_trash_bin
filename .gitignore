@@ -3,3 +3,6 @@ build/
 
 ## bin
 bin/
+
+## models
+models/
