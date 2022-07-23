@@ -19,12 +19,11 @@ int main() try
 
     // init solver
     SolvePose slover = SolvePose(camera.Intrinsics());
-    const float GROUND_W = 1;
-    const float GROUND_H = 1;
+    const float GROUND_W = 3.7;
+    const float GROUND_H = 1.8;
 
     // init tag detector
     AprilTagDetector tag_detector;
-    const int TRASH_TAG = 24;
 
     // init yolo
     // std::string model_path = "../models/yolov5s-480x.onnx";
@@ -45,40 +44,34 @@ int main() try
         camera.updateFrame();
     }
 
-    namedWindow("depth_img", cv::WINDOW_AUTOSIZE);
     namedWindow("color_img", cv::WINDOW_AUTOSIZE);
 
     while (cv::waitKey(1) != 27) {
         // update image
         camera.updateFrame();
         cv::Mat color_img = camera.rgbImg();
-        cv::Mat depth_img = camera.depthImg();
-        cv::flip(color_img, color_img, -1);
+        cv::Mat src_img;
+        cv::flip(color_img, src_img, -1);
+        cv::Mat dst_img;
+        src_img.copyTo(dst_img);
+        
         // update pose
         cv::Mat gray_img;
-        cv::cvtColor(color_img, gray_img, cv::COLOR_BGR2GRAY);
-
+        cv::cvtColor(src_img, gray_img, cv::COLOR_BGR2GRAY);
         zarray_t *detections = tag_detector.detectTag(gray_img);
-
         std::map<int ,apriltag_detection_t> april_tags;
         for(int i = 0; i < zarray_size(detections); ++i){
             apriltag_detection_t *det;
             zarray_get(detections, i, &det);
             april_tags[det->id] = *det;
-
            for(size_t i = 0; i < 4; ++i){
-                std::stringstream _s;
-                _s << i;
-                cv::String _t = _s.str();
-                putText(color_img, _t, cv::Point( static_cast<int>(det->p[i][0]),static_cast<int>(det->p[i][1])),
-                        cv::FONT_HERSHEY_SCRIPT_SIMPLEX, 1.0, cv::Scalar(0, 255, 255), 2);
-                cv::line(color_img, cv::Point(static_cast<int>(det->p[i][0]), static_cast<int>(det->p[i][1])),
+                cv::line(dst_img, cv::Point(static_cast<int>(det->p[i][0]), static_cast<int>(det->p[i][1])),
                             cv::Point(static_cast<int>(det->p[(i+1)%4][0]), static_cast<int>(det->p[(i+1)%4][1])),
                             cv::Scalar(255, 255, 0), 2);
            }
         }
 
-        if(april_tags.size() > 4){
+        if(april_tags.size() > 3){
             // four apriltag midpoints as plane vertices
             std::vector<cv::Point2f> plane_2d;
             plane_2d.clear();
@@ -88,14 +81,38 @@ int main() try
             }
             vertexesSort(plane_2d);
             slover.Solver(plane_2d, GROUND_W * 1000.0, GROUND_H * 1000.0);
-            slover.drawCoordinate(color_img);
+            slover.drawCoordinate(dst_img);
         }
 
         // YOLO detect
-        std::vector<yolov5::Detection> result =  yolo.detect(color_img, 0.001);
+        std::vector<yolov5::Detection> result =  yolo.detect(src_img);
         
+        yolov5::Detection trash_bin;
+        std::vector<yolov5::Detection> peoples;
+        std::vector<yolov5::Detection> hands;
+        std::vector<yolov5::Detection> cats;
         for (size_t i = 0; i < result.size(); ++i)
         {
+                        switch (result[i].class_id)
+            {
+            case 0: {
+                peoples.emplace_back(result[i]);
+            }
+                break;
+            case 1: {
+                trash_bin = result[i];
+            }
+                break;
+            case 2: {
+                hands.emplace_back(result[i]);
+                
+            }
+            case 3: {
+                cats.emplace_back(result[i]);
+                
+            }
+                break;
+            }
             auto detection = result[i];
             auto bbox = detection.bbox;
             auto classId = detection.class_id;
@@ -107,25 +124,41 @@ int main() try
         
         // find trash
 
-        if(april_tags.contains(TRASH_TAG)){
-            cv::Point trash_center  = cv::Point(april_tags[TRASH_TAG].c[0], april_tags[TRASH_TAG].c[1]);
-            cv::Point p_0           = cv::Point(static_cast<int>(april_tags[TRASH_TAG].p[0][0]), static_cast<int>(april_tags[TRASH_TAG].p[0][1]));
-            cv::Point p_1           = cv::Point(static_cast<int>(april_tags[TRASH_TAG].p[1][0]), static_cast<int>(april_tags[TRASH_TAG].p[1][1]));
-            cv::Point trash_face    = solveCollinearPoints(trash_center, cv::Point((p_0.x + p_1.x)*0.5, (p_0.y + p_1.y)*0.5));
-
-            cv::line(color_img, trash_center, trash_face, cv::Scalar(0, 255, 255), 2);
+        if (trash_bin.class_id != -1){
+            cv::Point t_base = cv::Point(trash_bin.bbox.x + trash_bin.bbox.width * 0.5, trash_bin.bbox.y + trash_bin.bbox.height);
+            cv::Point3f t_base_3d = slover.coordinateImageToWorld(t_base);
+            // find people
+            for (size_t i = 0; i < peoples.size(); ++i){
+                cv::Rect p_rect = peoples[i].bbox;
+                for (size_t j = 0; j < hands.size(); j++)
+                {
+                    cv::Rect h_rect = hands[j].bbox;
+                    cv::Rect intersection = p_rect | h_rect;
+                    if(intersection.area() > 0){
+                        cv::Point p_base = cv::Point(peoples[i].bbox.x + peoples[i].bbox.width * 0.5, peoples[i].bbox.y + peoples[i].bbox.height);
+                        cv::Point3f p_base_3d = slover.coordinateImageToWorld(p_base);
+                        float dis = sqrt(pow(t_base_3d.x - p_base_3d.x, 2) + pow(t_base_3d.y - p_base_3d.y, 2));
+                        if (dis >= 800){
+                            cv::line(dst_img, t_base, p_base, cv::Scalar(150, 105, 255), 4);
+                        } else {
+                            cv::line(dst_img, t_base, p_base, cv::Scalar(40, 255, 40), 4);
+                        }
+                        
+                        break;
+                    }
+                }
+            }
+            // find cat
+            for (size_t i = 0; i < cats.size(); ++i){
+                cv::Rect c_rect = cats[i].bbox;
+                cv::Point c_base = cv::Point(cats[i].bbox.x + cats[i].bbox.width * 0.5, cats[i].bbox.y + cats[i].bbox.height);
+                cv::Point3f c_base_3d = slover.coordinateImageToWorld(c_base);
+                float dis = sqrt(pow(t_base_3d.x - c_base_3d.x, 2) + pow(t_base_3d.y - c_base_3d.y, 2));
+            }
         }
 
-        // find people
-
-        // find cat
-
-        // show image
-        
-        // cv::imshow("depth_img", depth_img);
         cv::imshow("color_img", color_img);
     }
-
 
     return EXIT_SUCCESS;
 }
