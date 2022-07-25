@@ -55,7 +55,7 @@ void SolvePose::Solver(std::vector<cv::Point2f> img_2d, float w, float h);
 ``` cpp
 cv::Point3f SolvePose::coordinateImageToWorld(cv::Point2d img_uv);
 ```
-求解二维点在三维坐标中的映射，不考虑 Z轴 高度，所以要确保输的点为正确的地面上的点
+求解二维点在三维坐标中的映射，不考虑 Z轴 高度，所以要确保输入的点为正确的地面上的点
 
 ### 模型训练
 
