@@ -69,7 +69,7 @@ cv::Point3f SolvePose::coordinateImageToWorld(cv::Point2d img_uv);
 
 ![](./images/train.png)
 
-从训练的效果来看，数据集的准备是比较差的 —— 场景固定，标签单一。这是的模型的鲁棒性不够强，是一个可改进的方向
+从训练的效果来看，数据集的准备是比较差的 —— 场景固定，标签单一。使得模型的鲁棒性不够强，是一个可改进的方向
 
 最终的检测效果
 ![](./images/detect.png)
